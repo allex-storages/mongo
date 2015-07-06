@@ -1,5 +1,5 @@
 {
-  "name": "allex_mongo_storage",
+  "name": "allex_mongostorage",
   "version": "0.1.0",
   "description": "MongoDB Storage engine for AllexJS DataServices",
   "main": "index.js",
