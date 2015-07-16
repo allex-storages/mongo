@@ -8,7 +8,6 @@ function createFilterFactory(execlib) {
   }
   lib.inherit(Factory,lib.Map);
   Factory.prototype.createFromDescriptor = function(filterdescriptor){
-    console.log('Mongo createFromDescriptor', filterdescriptor);
     if(!filterdescriptor){
       return {};
     }

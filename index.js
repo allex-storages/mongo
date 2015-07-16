@@ -24,7 +24,9 @@ function createMongoStorage(execlib){
     this.db = null;
     this.dbname = storagedescriptor.database;
     this.collectionname = storagedescriptor.table;
+    this._idname = storagedescriptor._idname;
     this.q = new lib.Fifo();
+    console.log('new MongoStorage', storagedescriptor, '=>', this);
     MongoClient.connect(this.connectionStringOutOf(storagedescriptor), this.onConnected.bind(this));
   }
   lib.inherit(MongoStorage,StorageBase);
@@ -82,24 +84,69 @@ function createMongoStorage(execlib){
       this.satisfyQ();
     }
   };
-  function reportItem (defer, totalcount, err, item) {
+  function _id2nameRemapper(_idname, ret, item, itemname) {
+    if(itemname === '_id') {
+      ret[_idname] = item;
+    } else if (itemname === _idname) {
+      return;
+    } else {
+      ret[itemname] = item;
+    }
+  }
+  MongoStorage.prototype.remap_db2allex = function (hash) {
+    var ret = {};
+    lib.traverseShallow(hash, _id2nameRemapper.bind(null, this._idname, ret));
+    console.log('after remap_db2allex', hash, '=>', ret);
+    return ret;
+  };
+  MongoStorage.prototype.db2allex = function (item) {
+    if(this._idname){
+      return this.remap_db2allex(item);
+    } else {
+      return item;
+    }
+  };
+  function name2_idRemapper(_idname, ret, item, itemname) {
+    if(itemname === '_id'){
+      return;
+    } else if (itemname === _idname) {
+      ret['_id'] = item;
+    } else {
+      ret[itemname] = item;
+    }
+  }
+  MongoStorage.prototype.remap_allex2db = function (hash) {
+    var ret = {};
+    lib.traverseShallow(hash, name2_idRemapper.bind(null, this._idname, ret));
+    console.log('after remap_db2allex', hash, '=>', ret);
+    return ret;
+  };
+  MongoStorage.prototype.allex2db = function (item) {
+    if(this._idname){
+      return this.remap_allex2db(item);
+    } else {
+      return item;
+    }
+  }
+  MongoStorage.prototype.reportItem = function (defer, totalcount, err, item) {
     if (err) {
       defer.reject(err);
     } else {
       if (item) {
-        defer.notify(item);
+        defer.notify(this.db2allex(item));
       } else {
         defer.resolve(totalcount);
       }
     }
   }
-  function consumeCursor(cursor, defer) {
-    cursor.each(reportItem.bind(null, defer, cursor.count()));
+  MongoStorage.prototype.consumeCursor = function (cursor, defer) {
+    cursor.each(this.reportItem.bind(this, defer, cursor.count()));
   }
   MongoStorage.prototype.doRead = function (query, defer) {
     var collection,
       findparams,
-      findcursor;
+      findcursor,
+      descriptor;
     if (!this.db) {
       this.q.push(['doRead',query,defer]);
       return;
@@ -109,15 +156,40 @@ function createMongoStorage(execlib){
       defer.reject(new lib.Error('MONGODB_COLLECTION_DOES_NOT_EXIST','MongoDB database '+this.dbname+' does not have a collection named '+this.collectionname));
       return;
     }
-    findparams = mongoSuite.filterFactory.createFromDescriptor(query.filter().descriptor());
+    descriptor = query.filter().descriptor();
+    console.log('descriptor',descriptor);
+    if(descriptor && descriptor.field && descriptor.field === this._idname){
+      descriptor.field = '_id';
+    }
+    findparams = mongoSuite.filterFactory.createFromDescriptor(descriptor);
+    console.log('will call find on collection', findparams);
     findcursor =  collection.find.apply(collection,findparams);
     try{
-      consumeCursor(findcursor, defer);
+      this.consumeCursor(findcursor, defer);
     } catch (e) {
       console.error(e.stack);
       console.error(e);
       defer.reject(e);
     }
+  };
+  MongoStorage.prototype.doCreate = function (datahash, defer){
+    var collection;
+    if (!this.db) {
+      this.q.push(['doCreate', datahash, defer]);
+      return;
+    }
+    collection = this.db.collection(this.collectionname);
+    if (!collection) {
+      defer.reject(new lib.Error('MONGODB_COLLECTION_DOES_NOT_EXIST','MongoDB database '+this.dbname+' does not have a collection named '+this.collectionname));
+      return;
+    }
+    collection.insert(this.allex2db(datahash),{},function(err, data){
+      if (err) {
+        defer.reject(err);
+      } else {
+        defer.resolve(data);
+      }
+    });
   };
 
   return MongoStorage;
