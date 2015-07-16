@@ -26,7 +26,6 @@ function createMongoStorage(execlib){
     this.collectionname = storagedescriptor.table;
     this._idname = storagedescriptor._idname;
     this.q = new lib.Fifo();
-    console.log('new MongoStorage', storagedescriptor, '=>', this);
     MongoClient.connect(this.connectionStringOutOf(storagedescriptor), this.onConnected.bind(this));
   }
   lib.inherit(MongoStorage,StorageBase);
@@ -73,7 +72,7 @@ function createMongoStorage(execlib){
     if (storagedescriptor.database) {
       cs += ('/'+storagedescriptor.database);
     }
-    console.log('Connection string,',storagedescriptor,'=>',cs);
+    //console.log('Connection string,',storagedescriptor,'=>',cs);
     return cs;
   };
   MongoStorage.prototype.onConnected = function (err, db) {
@@ -96,7 +95,7 @@ function createMongoStorage(execlib){
   MongoStorage.prototype.remap_db2allex = function (hash) {
     var ret = {};
     lib.traverseShallow(hash, _id2nameRemapper.bind(null, this._idname, ret));
-    console.log('after remap_db2allex', hash, '=>', ret);
+    //console.log('after remap_db2allex', hash, '=>', ret);
     return ret;
   };
   MongoStorage.prototype.db2allex = function (item) {
@@ -118,7 +117,7 @@ function createMongoStorage(execlib){
   MongoStorage.prototype.remap_allex2db = function (hash) {
     var ret = {};
     lib.traverseShallow(hash, name2_idRemapper.bind(null, this._idname, ret));
-    console.log('after remap_db2allex', hash, '=>', ret);
+    //console.log('after remap_db2allex', hash, '=>', ret);
     return ret;
   };
   MongoStorage.prototype.allex2db = function (item) {
@@ -157,12 +156,12 @@ function createMongoStorage(execlib){
       return;
     }
     descriptor = query.filter().descriptor();
-    console.log('descriptor',descriptor);
+    //console.log('descriptor',descriptor);
     if(descriptor && descriptor.field && descriptor.field === this._idname){
       descriptor.field = '_id';
     }
     findparams = mongoSuite.filterFactory.createFromDescriptor(descriptor);
-    console.log('will call find on collection', findparams);
+    //console.log('will call find on collection', findparams);
     findcursor =  collection.find.apply(collection,findparams);
     try{
       this.consumeCursor(findcursor, defer);
