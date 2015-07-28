@@ -140,6 +140,13 @@ function createMongoStorage(execlib){
   }
   MongoStorage.prototype.consumeCursor = function (cursor, defer) {
     cursor.each(this.reportItem.bind(this, defer, cursor.count()));
+    /*
+    var cc = cursor.count(), t = this;
+    cursor.each(function (err, item) {
+      console.log('item', item);
+      t.reportItem(defer, cc, err, item);
+    });
+    */
   }
   MongoStorage.prototype.doRead = function (query, defer) {
     var collection,
@@ -161,7 +168,7 @@ function createMongoStorage(execlib){
       descriptor.field = '_id';
     }
     findparams = mongoSuite.filterFactory.createFromDescriptor(descriptor);
-    //console.log('will call find on collection', findparams);
+    //console.log('mongo doRead',descriptor,'=>',findparams);
     findcursor =  collection.find.apply(collection,findparams);
     try{
       this.consumeCursor(findcursor, defer);
@@ -177,12 +184,32 @@ function createMongoStorage(execlib){
       this.q.push(['doCreate', datahash, defer]);
       return;
     }
+    datahash = this.__record.filterHash(datahash);
     collection = this.db.collection(this.collectionname);
     if (!collection) {
       defer.reject(new lib.Error('MONGODB_COLLECTION_DOES_NOT_EXIST','MongoDB database '+this.dbname+' does not have a collection named '+this.collectionname));
       return;
     }
+    //console.log('doCreate produces',datahash,'=>',this.allex2db(datahash));
     collection.insert(this.allex2db(datahash),{},function(err, data){
+      if (err) {
+        defer.reject(err);
+      } else {
+        defer.resolve(data);
+      }
+    });
+  };
+  MongoStorage.prototype.doDelete = function (filter, defer) {
+    var collection, mfiltertemp, mfilter;
+    if (!this.db) {
+      this.q.push(['doCreate', datahash, defer]);
+      return;
+    }
+    collection = this.db.collection(this.collectionname);
+    mfiltertemp = mongoSuite.filterFactory.createFromDescriptor(filter.__descriptor).map(this.allex2db.bind(this));
+    mfilter = mfiltertemp[0];
+    //console.log(filter,'=>',mfiltertemp,'=>',mfilter);
+    collection.remove(mfilter,{fsync:true},function(err, data){
       if (err) {
         defer.reject(err);
       } else {
