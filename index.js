@@ -191,18 +191,23 @@ function createMongoStorage(execlib){
       return;
     }
     //console.log('doCreate produces',datahash,'=>',this.allex2db(datahash));
-    collection.insert(this.allex2db(datahash),{},function(err, data){
-      if (err) {
-        defer.reject(err);
+    collection.insert(this.allex2db(datahash),{},this.onCreated.bind(this, defer));
+  };
+  MongoStorage.prototype.onCreated = function (defer, err, data){
+    if (err) {
+      defer.reject(err);
+    } else {
+      if (data.insertedCount===1) {
+        defer.resolve(this.db2allex(data.ops[0]));
       } else {
-        defer.resolve(data);
+        throw new lib.Error('MULTI_INSERT_NOT_SUPPORTED', 'Now what?');
       }
-    });
+    }
   };
   MongoStorage.prototype.doDelete = function (filter, defer) {
     var collection, mfiltertemp, mfilter;
     if (!this.db) {
-      this.q.push(['doCreate', datahash, defer]);
+      this.q.push(['doDelete', datahash, defer]);
       return;
     }
     collection = this.db.collection(this.collectionname);
@@ -216,6 +221,39 @@ function createMongoStorage(execlib){
         defer.resolve(data);
       }
     });
+  };
+
+  MongoStorage.prototype.doUpdate = function (filter, updateobj, options, defer) {
+    var collection,
+      descriptor,
+      updateparams;
+    collection = this.db.collection(this.collectionname);
+    if (!collection) {
+      defer.reject(new lib.Error('MONGODB_COLLECTION_DOES_NOT_EXIST','MongoDB database '+this.dbname+' does not have a collection named '+this.collectionname));
+      return;
+    }
+    descriptor = filter.__descriptor;
+    //console.log('descriptor',descriptor);
+    var changed = false;
+    if(descriptor && descriptor.field && descriptor.field === this._idname){
+      descriptor.field = '_id';
+      changed = true;
+    }
+    updateparams = mongoSuite.filterFactory.createFromDescriptor(descriptor);
+    updateparams.push(updateobj);
+    updateparams.push(options);
+    updateparams.push(this.onUpdated.bind(this, defer, filter, changed));
+    collection.update.apply(collection, updateparams);
+  };
+  MongoStorage.prototype.onUpdated = function (defer, filter, changed, err, updateobj) {
+    if (changed && filter && filter.__descriptor && filter.__descriptor.field === '_id') {
+      filter.__descriptor.field = this._idname;
+    }
+    if (err) {
+      defer.reject(new lib.Error('MONGO_COULD_NOT_UPDATE','No update done'));
+    } else {
+      defer.resolve({updated: updateobj.result.nModified});
+    }
   };
 
   return MongoStorage;
