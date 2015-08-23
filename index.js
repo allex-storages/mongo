@@ -128,6 +128,7 @@ function createMongoStorage(execlib){
     }
   }
   MongoStorage.prototype.reportItem = function (defer, totalcount, err, item) {
+    //console.log('cursor item', item);
     if (err) {
       defer.reject(err);
     } else {
@@ -168,7 +169,7 @@ function createMongoStorage(execlib){
       descriptor.field = '_id';
     }
     findparams = mongoSuite.filterFactory.createFromDescriptor(descriptor);
-    //console.log('mongo doRead',descriptor,'=>',findparams);
+    console.log(this.collectionname,'mongo doRead',descriptor,'=>',require('util').inspect(findparams, {depth:null}));
     findcursor =  collection.find.apply(collection,findparams);
     try{
       this.consumeCursor(findcursor, defer);

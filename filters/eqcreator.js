@@ -5,7 +5,7 @@ function createEqFilter(execlib) {
     var findhash = {};
     findhash[filter.field] = filter.value;
     return [findhash];
-  }
+  };
 }
 
 module.exports = createEqFilter;
