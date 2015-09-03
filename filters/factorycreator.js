@@ -9,11 +9,11 @@ function createFilterFactory(execlib) {
   lib.inherit(Factory,lib.Map);
   Factory.prototype.createFromDescriptor = function(filterdescriptor){
     if(!filterdescriptor){
-      return {};
+      return [{}];
     }
     var op = filterdescriptor.op;
     if(!op){
-      return {};
+      return [{}];
     }
     var fn = this.get(op);
     if(!fn){

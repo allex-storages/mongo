@@ -53,7 +53,7 @@ function createMongoStorage(execlib){
   };
   MongoStorage.prototype.satisfyQ = function () {
     var qe, methodname, method;
-    while (this.q.length) {
+    while (this.q && this.q.length) {
       qe = this.q.pop();
       methodname = qe.shift();
       method = this[methodname];
@@ -208,10 +208,12 @@ function createMongoStorage(execlib){
   MongoStorage.prototype.doDelete = function (filter, defer) {
     var collection, mfiltertemp, mfilter;
     if (!this.db) {
-      this.q.push(['doDelete', datahash, defer]);
+      this.q.push(['doDelete', filter, defer]);
       return;
     }
     collection = this.db.collection(this.collectionname);
+    console.log('doDelete filter.__descriptor', filter.__descriptor);
+    console.log('resulting filter array', mongoSuite.filterFactory.createFromDescriptor(filter.__descriptor));
     mfiltertemp = mongoSuite.filterFactory.createFromDescriptor(filter.__descriptor).map(this.allex2db.bind(this));
     mfilter = mfiltertemp[0];
     //console.log(filter,'=>',mfiltertemp,'=>',mfilter);
