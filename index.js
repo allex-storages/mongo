@@ -212,8 +212,10 @@ function createMongoStorage(execlib){
       return;
     }
     collection = this.db.collection(this.collectionname);
+    /*
     console.log('doDelete filter.__descriptor', filter.__descriptor);
     console.log('resulting filter array', mongoSuite.filterFactory.createFromDescriptor(filter.__descriptor));
+    */
     mfiltertemp = mongoSuite.filterFactory.createFromDescriptor(filter.__descriptor).map(this.allex2db.bind(this));
     mfilter = mfiltertemp[0];
     //console.log(filter,'=>',mfiltertemp,'=>',mfilter);

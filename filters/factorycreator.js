@@ -26,6 +26,7 @@ function createFilterFactory(execlib) {
   var factory = new Factory();
   factory.add('eq', require('./eqcreator')(execlib));
   factory.add('in', require('./increator')(execlib));
+  factory.add('contains', require('./containscreator')(execlib));
 
   return factory;
 }
