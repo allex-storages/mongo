@@ -245,7 +245,7 @@ function createMongoStorage(execlib){
       changed = true;
     }
     updateparams = mongoSuite.filterFactory.createFromDescriptor(descriptor);
-    updateparams.push(updateobj);
+    updateparams.push(this.allex2db(this.__record.filterHash(updateobj)));
     updateparams.push(options);
     updateparams.push(this.onUpdated.bind(this, defer, filter, changed));
     collection.update.apply(collection, updateparams);
