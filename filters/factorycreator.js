@@ -28,6 +28,7 @@ function createFilterFactory(execlib) {
   factory.add('in', require('./increator')(execlib));
   factory.add('contains', require('./containscreator')(execlib));
   factory.add('or', require('./orcreator')(execlib, factory));
+  factory.add('and', require('./andcreator')(execlib, factory));
 
   return factory;
 }
