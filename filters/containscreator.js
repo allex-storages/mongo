@@ -2,7 +2,7 @@ function createContainsFilter(execlib) {
   'use strict';
   return function (filter) {
     var findhash = {},
-      filterobj = {"$regex" : filter.value},
+      filterobj = {"$regex" : filter.value||''},
       options = '';
     if (filter.caseinsensitive) {
       options += 'i';
