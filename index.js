@@ -77,7 +77,7 @@ function createMongoStorage(execlib){
   };
   MongoStorage.prototype.onConnected = function (err, db) {
     if (err) {
-      //wut
+      console.log('ERROR IN CONNECTING TO MONGO DB:', err);
     } else {
       this.db = db;
       this.satisfyQ();
