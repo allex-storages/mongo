@@ -140,15 +140,23 @@ function createMongoStorage(execlib){
     }
   }
   MongoStorage.prototype.consumeCursor = function (cursor, defer) {
-    cursor.each(this.reportItem.bind(this, defer, cursor.count()));
+    cursor.count(this.consumeCursorWCount.bind(this, cursor, defer));
+  }
+  MongoStorage.prototype.consumeCursorWCount = function (cursor, defer, err, count) {
+    if (err) {
+      defer.reject(err);
+      return;
+    }
+    cursor.each(this.reportItem.bind(this, defer, count));
     /*
-    var cc = cursor.count(), t = this;
+    var t = this;
+    console.log(count, 'items found');
     cursor.each(function (err, item) {
       console.log('item', item);
-      t.reportItem(defer, cc, err, item);
+      t.reportItem(defer, count, err, item);
     });
     */
-  }
+  };
   MongoStorage.prototype.doRead = function (query, defer) {
     var collection,
       findparams,
@@ -169,7 +177,7 @@ function createMongoStorage(execlib){
       descriptor.field = '_id';
     }
     findparams = mongoSuite.filterFactory.createFromDescriptor(descriptor);
-    //console.log(this.collectionname,'mongo doRead',descriptor,'=>',require('util').inspect(findparams, {depth:null}));
+    console.log(this.collectionname,'mongo doRead',descriptor,'=>',require('util').inspect(findparams, {depth:null}));
     findcursor =  collection.find.apply(collection,findparams);
     try{
       this.consumeCursor(findcursor, defer);
