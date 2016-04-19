@@ -177,7 +177,7 @@ function createMongoStorage(execlib){
       descriptor.field = '_id';
     }
     findparams = mongoSuite.filterFactory.createFromDescriptor(descriptor);
-    console.log(this.collectionname,'mongo doRead',descriptor,'=>',require('util').inspect(findparams, {depth:null}));
+    //console.log(this.collectionname,'mongo doRead',descriptor,'=>',require('util').inspect(findparams, {depth:null}));
     findcursor =  collection.find.apply(collection,findparams);
     try{
       this.consumeCursor(findcursor, defer);
