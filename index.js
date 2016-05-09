@@ -46,14 +46,14 @@ function createMongoStorage(execlib){
   };
   MongoStorage.prototype.drainQ = function () {
     var qe;
-    while (this.q.length) {
+    while (this.q.getFifoLength()) {
       qe = this.q.pop();
-      qe[qe.length-1].reject('MongoStorage draining');
+      qe[qe.getFifoLength()-1].reject('MongoStorage draining');
     }
   };
   MongoStorage.prototype.satisfyQ = function () {
     var qe, methodname, method;
-    while (this.q && this.q.length) {
+    while (this.q && this.q.getFifoLength()) {
       qe = this.q.pop();
       methodname = qe.shift();
       method = this[methodname];
