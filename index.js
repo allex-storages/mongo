@@ -45,21 +45,21 @@ function createMongoStorage(execlib){
     StorageBase.prototype.destroy.call(this);
   };
   MongoStorage.prototype.drainQ = function () {
-    var qe;
-    while (this.q.getFifoLength()) {
-      qe = this.q.pop();
-      qe[qe.getFifoLength()-1].reject('MongoStorage draining');
-    }
+    this.q.drain(this.drainer.bind(this));
+  };
+  MongoStorage.prototype.drainer = function (qe) {
+    qe[qe.length-1].reject('MongoStorage draining');
   };
   MongoStorage.prototype.satisfyQ = function () {
-    var qe, methodname, method;
-    while (this.q && this.q.getFifoLength()) {
-      qe = this.q.pop();
-      methodname = qe.shift();
+    if (this.q) {
+      this.q.drain(this.satifyDrainer.bind(this));
+    }
+  };
+  MongoStorage.prototype.satifyDrainer = function (qe) {
+    var methodname = qe.shift(),
       method = this[methodname];
-      if('function' === typeof method){
-        method.apply(this,qe);
-      }
+    if(lib.isFunction(method)){
+      method.apply(this,qe);
     }
   };
   MongoStorage.prototype.connectionStringOutOf = function (storagedescriptor) {
