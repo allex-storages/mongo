@@ -157,6 +157,14 @@ function createMongoStorage(execlib){
     });
     */
   };
+  function remapFilter(_idname, filter) {
+    if(filter && filter.field && filter.field === _idname){
+      filter.field = '_id';
+    }
+    if (lib.isArray(filter.filters)) {
+      filter.filters.forEach(remapFilter.bind(null, _idname));
+    }
+  }
   MongoStorage.prototype.doRead = function (query, defer) {
     var collection,
       findparams,
@@ -172,10 +180,8 @@ function createMongoStorage(execlib){
       return;
     }
     descriptor = query.filter().descriptor();
+    remapFilter(this._idname, descriptor);
     //console.log('descriptor',descriptor);
-    if(descriptor && descriptor.field && descriptor.field === this._idname){
-      descriptor.field = '_id';
-    }
     findparams = mongoSuite.filterFactory.createFromDescriptor(descriptor);
     //console.log(this.collectionname,'mongo doRead',descriptor,'=>',require('util').inspect(findparams, {depth:null}));
     findcursor =  collection.find.apply(collection,findparams);
