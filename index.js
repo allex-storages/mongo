@@ -161,7 +161,7 @@ function createMongoStorage(execlib){
     if(filter && filter.field && filter.field === _idname){
       filter.field = '_id';
     }
-    if (lib.isArray(filter.filters)) {
+    if (filter && lib.isArray(filter.filters)) {
       filter.filters.forEach(remapFilter.bind(null, _idname));
     }
   }
