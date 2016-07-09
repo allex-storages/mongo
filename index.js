@@ -1,4 +1,6 @@
-var MongoClient = require('mongodb').MongoClient;
+var mongodb = require('mongodb'),
+  MongoClient = mongodb.MongoClient,
+  ObjectID = mongodb.ObjectID;
 
 function createMongoStorage(execlib){
   'use strict';
@@ -7,7 +9,7 @@ function createMongoStorage(execlib){
     dataSuite = execlib.dataSuite,
     StorageBase = dataSuite.StorageBase,
     mongoSuite = {
-      filterFactory: require('./filters/factorycreator')(execlib)
+      filterFactory: require('./filters/factorycreator')(execlib, ObjectID)
     };
 
   function MongoStorage(storagedescriptor){
@@ -25,6 +27,7 @@ function createMongoStorage(execlib){
     this.dbname = storagedescriptor.database;
     this.collectionname = storagedescriptor.table;
     this._idname = storagedescriptor._idname;
+    this._nativeid = storagedescriptor._nativeid;
     this.q = new lib.Fifo();
     MongoClient.connect(this.connectionStringOutOf(storagedescriptor), this.onConnected.bind(this));
   }
@@ -85,7 +88,7 @@ function createMongoStorage(execlib){
   };
   function _id2nameRemapper(_idname, ret, item, itemname) {
     if(itemname === '_id') {
-      ret[_idname] = item;
+      ret[_idname] = item.toString();
     } else if (itemname === _idname) {
       return;
     } else {
@@ -105,36 +108,38 @@ function createMongoStorage(execlib){
       return item;
     }
   };
-  function name2_idRemapper(_idname, ret, item, itemname) {
+  function name2_idRemapper(_nativeid, _idname, ret, item, itemname) {
     if(itemname === '_id'){
       return;
     } else if (itemname === _idname) {
-      ret['_id'] = item;
+      ret['_id'] = _nativeid ? new ObjectID(item) : item;
     } else {
       ret[itemname] = item;
     }
   }
   MongoStorage.prototype.remap_allex2db = function (hash) {
     var ret = {};
-    lib.traverseShallow(hash, name2_idRemapper.bind(null, this._idname, ret));
+    lib.traverseShallow(hash, name2_idRemapper.bind(null, this._nativeid, this._idname, ret));
     //console.log('after remap_db2allex', hash, '=>', ret);
     return ret;
   };
   MongoStorage.prototype.allex2db = function (item) {
-    if(this._idname){
+    if(this._idname || this._nativeid){
       return this.remap_allex2db(item);
     } else {
       return item;
     }
   }
   MongoStorage.prototype.reportItem = function (defer, totalcount, err, item) {
-    //console.log('cursor item', item);
     if (err) {
+      //console.log('rejecting with', err);
       defer.reject(err);
     } else {
       if (item) {
+        //console.log('notifying with', this.db2allex(item), 'because', item);
         defer.notify(this.db2allex(item));
       } else {
+        //console.log('resolving with', totalcount);
         defer.resolve(totalcount);
       }
     }
@@ -148,14 +153,6 @@ function createMongoStorage(execlib){
       return;
     }
     cursor.each(this.reportItem.bind(this, defer, count));
-    /*
-    var t = this;
-    console.log(count, 'items found');
-    cursor.each(function (err, item) {
-      console.log('item', item);
-      t.reportItem(defer, count, err, item);
-    });
-    */
   };
   function remapFilter(_idname, filter) {
     if(filter && filter.field && filter.field === _idname){
@@ -182,7 +179,7 @@ function createMongoStorage(execlib){
     descriptor = query.filter().descriptor();
     remapFilter(this._idname, descriptor);
     //console.log('descriptor',descriptor);
-    findparams = mongoSuite.filterFactory.createFromDescriptor(descriptor);
+    findparams = mongoSuite.filterFactory.createFromDescriptor(descriptor, this);
     //console.log(this.collectionname,'mongo doRead',descriptor,'=>',require('util').inspect(findparams, {depth:null}));
     findcursor =  collection.find.apply(collection,findparams);
     try{
@@ -220,17 +217,20 @@ function createMongoStorage(execlib){
     }
   };
   MongoStorage.prototype.doDelete = function (filter, defer) {
-    var collection, mfiltertemp, mfilter;
+    var collection, descriptor, mfiltertemp, mfilter;
     if (!this.db) {
       this.q.push(['doDelete', filter, defer]);
       return;
     }
     collection = this.db.collection(this.collectionname);
+    descriptor = filter.descriptor();
+    remapFilter(this._idname, descriptor);
+    mfiltertemp = mongoSuite.filterFactory.createFromDescriptor(descriptor, this);//.map(this.allex2db.bind(this));
     /*
     console.log('doDelete filter.__descriptor', filter.__descriptor);
-    console.log('resulting filter array', mongoSuite.filterFactory.createFromDescriptor(filter.__descriptor));
+    console.log('resulting filter array', mongoSuite.filterFactory.createFromDescriptor(filter.__descriptor, this));
+    console.log('delete filter', filter, 'desc', descriptor, '=>', mfiltertemp);
     */
-    mfiltertemp = mongoSuite.filterFactory.createFromDescriptor(filter.__descriptor).map(this.allex2db.bind(this));
     mfilter = mfiltertemp[0];
     //console.log(filter,'=>',mfiltertemp,'=>',mfilter);
     collection.remove(mfilter,{fsync:true},function(err, data){
@@ -241,6 +241,15 @@ function createMongoStorage(execlib){
       }
     });
   };
+
+  function updateOptions (options) {
+    if (options.upsert) {
+      return {
+        upsert: options.upsert
+      };
+    }
+    return {};
+  }
 
   MongoStorage.prototype.doUpdate = function (filter, updateobj, options, defer) {
     var collection,
@@ -257,10 +266,24 @@ function createMongoStorage(execlib){
     if(descriptor && descriptor.field && descriptor.field === this._idname){
       descriptor.field = '_id';
       changed = true;
+      if(this._nativeid) {
+        descriptor.value = new ObjectID(descriptor.value);
+      }
     }
-    updateparams = mongoSuite.filterFactory.createFromDescriptor(descriptor);
-    updateparams.push(this.allex2db(this.__record.filterHash(updateobj)));
-    updateparams.push(options);
+    updateparams = mongoSuite.filterFactory.createFromDescriptor(descriptor, this);
+    updateobj = this.allex2db(updateobj);
+    switch (options.op) {
+      case 'push':
+        updateparams.push({ $push: updateobj });
+        break;
+      case 'pull':
+        updateparams.push({ $pull: updateobj });
+        break;
+      default:
+        updateparams.push(this.allex2db(this.__record.filterHash(updateobj)));
+        break;
+    }
+    updateparams.push(updateOptions(options));
     updateparams.push(this.onUpdated.bind(this, defer, filter, changed));
     collection.update.apply(collection, updateparams);
   };
@@ -269,6 +292,7 @@ function createMongoStorage(execlib){
       filter.__descriptor.field = this._idname;
     }
     if (err) {
+      console.error(err);
       defer.reject(new lib.Error('MONGO_COULD_NOT_UPDATE','No update done'));
     } else {
       defer.resolve({updated: updateobj.result.nModified});

@@ -1,9 +1,9 @@
-function createEqFilter(execlib) {
+function createEqFilter(execlib, fieldValue) {
   'use strict';
-  return function (filter) {
+  return function (filter, options) {
     //console.log('DataService eq filter', filter);
     var findhash = {};
-    findhash[filter.field] = filter.value;
+    findhash[filter.field] = fieldValue(filter.value, filter.field, options);
     return [findhash];
   };
 }
