@@ -280,7 +280,7 @@ function createMongoStorage(execlib){
         updateparams.push({ $pull: updateobj });
         break;
       default:
-        updateparams.push(this.allex2db(this.__record.filterHash(updateobj)));
+        updateparams.push(updateobj);
         break;
     }
     updateparams.push(updateOptions(options));
