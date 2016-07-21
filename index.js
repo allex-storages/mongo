@@ -272,6 +272,7 @@ function createMongoStorage(execlib){
     }
     updateparams = mongoSuite.filterFactory.createFromDescriptor(descriptor, this);
     updateobj = this.allex2db(updateobj);
+    options = options || {};
     switch (options.op) {
       case 'push':
         updateparams.push({ $push: updateobj });
@@ -280,11 +281,12 @@ function createMongoStorage(execlib){
         updateparams.push({ $pull: updateobj });
         break;
       default:
-        updateparams.push(updateobj);
+        updateparams.push(this.__record.filterHash(updateobj));
         break;
     }
     updateparams.push(updateOptions(options));
     updateparams.push(this.onUpdated.bind(this, defer, filter, changed));
+    console.log(this.collectionname, 'update', updateparams);
     collection.update.apply(collection, updateparams);
   };
   MongoStorage.prototype.onUpdated = function (defer, filter, changed, err, updateobj) {
