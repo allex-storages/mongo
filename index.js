@@ -286,7 +286,7 @@ function createMongoStorage(execlib){
     }
     updateparams.push(updateOptions(options));
     updateparams.push(this.onUpdated.bind(this, defer, filter, changed));
-    console.log(this.collectionname, 'update', updateparams);
+    //console.log(this.collectionname, 'update', updateparams);
     collection.update.apply(collection, updateparams);
   };
   MongoStorage.prototype.onUpdated = function (defer, filter, changed, err, updateobj) {
