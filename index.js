@@ -108,24 +108,24 @@ function createMongoStorage(execlib){
       return item;
     }
   };
-  function name2_idRemapper(_nativeid, _idname, ret, item, itemname) {
+  function name2_idRemapper(skipid, _nativeid, _idname, ret, item, itemname) {
     if(itemname === '_id'){
       return;
-    } else if (itemname === _idname) {
+    } else if ( (itemname === _idname) && !skipid) {
       ret['_id'] = _nativeid ? new ObjectID(item) : item;
     } else {
       ret[itemname] = item;
     }
   }
-  MongoStorage.prototype.remap_allex2db = function (hash) {
+  MongoStorage.prototype.remap_allex2db = function (hash, skipid) {
     var ret = {};
-    lib.traverseShallow(hash, name2_idRemapper.bind(null, this._nativeid, this._idname, ret));
+    lib.traverseShallow(hash, name2_idRemapper.bind(null, skipid, this._nativeid, this._idname, ret));
     //console.log('after remap_db2allex', hash, '=>', ret);
     return ret;
   };
-  MongoStorage.prototype.allex2db = function (item) {
+  MongoStorage.prototype.allex2db = function (item, skipid) {
     if(this._idname || this._nativeid){
-      return this.remap_allex2db(item);
+      return this.remap_allex2db(item, skipid);
     } else {
       return item;
     }
@@ -281,15 +281,18 @@ function createMongoStorage(execlib){
         updateparams.push({ $pull: updateobj });
         break;
       default:
-        updateparams.push(this.__record.filterHash(updateobj));
+        console.log('allex2db with skipid');
+        updateparams.push(this.allex2db(this.__record.filterHash(updateobj), true));
         break;
     }
     updateparams.push(updateOptions(options));
-    updateparams.push(this.onUpdated.bind(this, defer, filter, changed));
+    updateparams.push(this.onUpdated.bind(this, defer, filter, updateparams, changed));
     //console.log(this.collectionname, 'update', updateparams);
     collection.update.apply(collection, updateparams);
   };
-  MongoStorage.prototype.onUpdated = function (defer, filter, changed, err, updateobj) {
+  MongoStorage.prototype.onUpdated = function (defer, filter, updateparams, changed, err, updateobj) {
+    //console.log('onUpdated', err, updateobj);
+    var up;
     if (changed && filter && filter.__descriptor && filter.__descriptor.field === '_id') {
       filter.__descriptor.field = this._idname;
     }
@@ -297,7 +300,17 @@ function createMongoStorage(execlib){
       console.error(err);
       defer.reject(new lib.Error('MONGO_COULD_NOT_UPDATE','No update done'));
     } else {
-      defer.resolve({updated: updateobj.result.nModified});
+      //console.log('onUpdated', updateobj.result);
+      if (updateobj.result.upserted && updateobj.result.upserted.length) {
+        up = updateparams[updateparams.length-3];
+        up._id = updateobj.result.upserted[0]._id;
+        up = this.db2allex(up);
+        //console.log('notify', up, '?');
+        defer.notify([up, null]);
+        defer.resolve({upserted: updateobj.result.upserted.length});
+      } else {
+        defer.resolve({updated: updateobj.result.nModified});
+      }
     }
   };
 
