@@ -243,7 +243,7 @@ function createMongoStorage(execlib){
       if (changed) {
         this.maybeRevertDescriptorField(descriptor);
       }
-      console.log('onDeleted resolving', data.result, 'with final descriptor', descriptor);
+      //console.log('onDeleted resolving', data.result, 'with final descriptor', descriptor);
       defer.resolve(data);
     }
     defer = null;
