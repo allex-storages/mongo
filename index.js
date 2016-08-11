@@ -295,7 +295,7 @@ function createMongoStorage(execlib){
       return;
     }
     descriptor = filter.__descriptor;
-    //console.log('descriptor',descriptor);
+    //console.log('update descriptor',descriptor);
     changed = this.maybeChangeDescriptorField(descriptor);//false;
     
     updateparams = mongoSuite.filterFactory.createFromDescriptor(descriptor, this);
@@ -309,8 +309,8 @@ function createMongoStorage(execlib){
         updateparams.push({ $pull: updateobj });
         break;
       default:
-        //console.log('allex2db with skipid');
-        updateparams.push(this.allex2db(this.__record.filterHash(updateobj), true));
+        //console.log('updateobj will become', updateobj, '=>', this.__record.filterOut(updateobj));
+        updateparams.push(this.allex2db(this.__record.filterOut(updateobj), true));
         break;
     }
     updateparams.push(updateOptions(options));
