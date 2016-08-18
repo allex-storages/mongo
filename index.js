@@ -88,7 +88,9 @@ function createMongoStorage(execlib){
   };
   function _id2nameRemapper(_idname, ret, item, itemname) {
     if(itemname === '_id') {
-      ret[_idname] = item.toString();
+      if (item) {
+        ret[_idname] = item.toString();
+      }
     } else if (itemname === _idname) {
       return;
     } else {
@@ -289,7 +291,8 @@ function createMongoStorage(execlib){
     var collection = this.db.collection(this.collectionname),
       descriptor,
       updateparams,
-      changed;
+      changed,
+      defupdobj;
     if (!collection) {
       defer.reject(new lib.Error('MONGODB_COLLECTION_DOES_NOT_EXIST','MongoDB database '+this.dbname+' does not have a collection named '+this.collectionname));
       return;
@@ -310,7 +313,8 @@ function createMongoStorage(execlib){
         break;
       default:
         //console.log('updateobj will become', updateobj, '=>', this.__record.filterOut(updateobj));
-        updateparams.push(this.allex2db(this.__record.filterOut(updateobj), true));
+        defupdobj = this.allex2db(this.__record.filterOut(updateobj), true);
+        updateparams.push(defupdobj);
         break;
     }
     updateparams.push(updateOptions(options));
