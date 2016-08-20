@@ -311,6 +311,9 @@ function createMongoStorage(execlib){
       case 'pull':
         updateparams.push({ $pull: updateobj });
         break;
+      case 'set':
+        updateparams.push({ $set: updateobj });
+        break;
       default:
         //console.log('updateobj will become', updateobj, '=>', this.__record.filterOut(updateobj));
         defupdobj = this.allex2db(this.__record.filterOut(updateobj), true);
