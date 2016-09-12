@@ -308,6 +308,9 @@ function createMongoStorage(execlib){
       case 'push':
         updateparams.push({ $push: updateobj });
         break;
+      case 'addtoset':
+        updateparams.push({ $addToSet: updateobj });
+        break;
       case 'pull':
         updateparams.push({ $pull: updateobj });
         break;
@@ -322,7 +325,7 @@ function createMongoStorage(execlib){
     }
     updateparams.push(updateOptions(options));
     updateparams.push(this.onUpdated.bind(this, defer, filter, updateparams, changed));
-    //console.log(this.collectionname, 'update', updateparams);
+    console.log(this.collectionname, 'update', updateparams);
     collection.update.apply(collection, updateparams);
   };
   MongoStorage.prototype.onUpdated = function (defer, filter, updateparams, changed, err, updateobj) {
