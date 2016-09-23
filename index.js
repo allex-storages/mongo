@@ -132,7 +132,7 @@ function createMongoStorage(execlib){
       return item;
     }
   }
-  MongoStorage.prototype.reportItem = function (defer, totalcount, err, item) {
+  MongoStorage.prototype.reportItem = function (cursor, defer, totalcount, err, item) {
     if (err) {
       //console.log('rejecting with', err);
       defer.reject(err);
@@ -142,9 +142,12 @@ function createMongoStorage(execlib){
         defer.notify(this.db2allex(item));
       } else {
         //console.log('resolving with', totalcount);
+        cursor.close();
         defer.resolve(totalcount);
       }
     }
+    cursor = null;
+    defer = null;
   }
   MongoStorage.prototype.consumeCursor = function (cursor, defer) {
     cursor.count(this.consumeCursorWCount.bind(this, cursor, defer));
@@ -152,9 +155,10 @@ function createMongoStorage(execlib){
   MongoStorage.prototype.consumeCursorWCount = function (cursor, defer, err, count) {
     if (err) {
       defer.reject(err);
+      defer = null;
       return;
     }
-    cursor.each(this.reportItem.bind(this, defer, count));
+    cursor.each(this.reportItem.bind(this, cursor, defer, count));
   };
   function remapFilter(_idname, filter) {
     if(filter && filter.field && filter.field === _idname){
@@ -229,10 +233,10 @@ function createMongoStorage(execlib){
     //remapFilter(this._idname, descriptor);
     changed = this.maybeChangeDescriptorField(descriptor);
     mfiltertemp = mongoSuite.filterFactory.createFromDescriptor(descriptor, this);//.map(this.allex2db.bind(this));
-    /*
     console.log('doDelete filter.__descriptor', filter.__descriptor);
     console.log('resulting filter array', mongoSuite.filterFactory.createFromDescriptor(filter.__descriptor, this));
     console.log('delete filter', filter, 'desc', descriptor, '=>', mfiltertemp);
+    /*
     */
     mfilter = mfiltertemp[0];
     //console.log(filter,'=>',mfiltertemp,'=>',mfilter);
