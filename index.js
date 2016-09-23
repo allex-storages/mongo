@@ -315,6 +315,9 @@ function createMongoStorage(execlib){
       case 'addtoset':
         updateparams.push({ $addToSet: updateobj });
         break;
+      case 'removeallfromset':
+        updateparams.push({ $pullAll: updateobj });
+        break;
       case 'pull':
         updateparams.push({ $pull: updateobj });
         break;
