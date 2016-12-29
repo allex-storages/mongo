@@ -19,6 +19,6 @@
   "author": "HERS Belgrade",
   "license": "ISC",
   "dependencies": {
-    "mongodb": "2.0.x"
+    "mongodb": "2.2.x"
   }
 }
