@@ -26,8 +26,14 @@ function createFilterFactory(execlib, ObjectID) {
 
   var factory = new Factory();
   factory.add('eq', require('./eqcreator')(execlib, fieldValue));
+  factory.add('gte', require('./gtecreator')(execlib, fieldValue));
+  factory.add('gt', require('./gtcreator')(execlib, fieldValue));
+  factory.add('lte', require('./ltecreator')(execlib, fieldValue));
+  factory.add('lt', require('./ltcreator')(execlib, fieldValue));
   factory.add('in', require('./increator')(execlib));
   factory.add('contains', require('./containscreator')(execlib));
+  factory.add('startswith', require('./startswithcreator')(execlib));
+  factory.add('endswith', require('./endswithcreator')(execlib));
   factory.add('or', require('./orcreator')(execlib, factory));
   factory.add('and', require('./andcreator')(execlib, factory));
 

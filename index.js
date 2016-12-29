@@ -238,6 +238,10 @@ function createMongoStorage(execlib){
     console.log('delete filter', filter, 'desc', descriptor, '=>', mfiltertemp);
     /*
     */
+    if (!lib.isArray(mfiltertemp)) {
+      defer.reject(new lib.Error('FILTER_NOT_IMPLEMENTED', JSON.stringify(descriptor||{})+' is not implemented in allex_mongostorage'));
+      return;
+    }
     mfilter = mfiltertemp[0];
     //console.log(filter,'=>',mfiltertemp,'=>',mfilter);
     collection.remove(mfilter,{fsync:true},this.onDeleted.bind(this, changed, descriptor, defer));
