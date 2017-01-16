@@ -291,6 +291,34 @@ function createMongoStorage(execlib){
     return changed;
   };
 
+  MongoStorage.prototype.doAggregate = function (aggregation_descriptor) {
+    ///TODO: nije to dovoljno ... ima tu jos par stvari ... pogledaj : http://mongodb.github.io/node-mongodb-native/2.2/api/AggregationCursor.html
+    var collection = this.db.collection(this.collectionname);
+
+    if (!collection) return q.reject (new lib.Error ('MONGODB_COLLECTION_DOES_NOT_EXIST', 'MongoDB database '+this.dbname+' does not have a collection named '+this.collectionname));
+    var cursor = collection.aggregate(aggregation_descriptor, {cursor : {batchSize : 1}});
+    var defer = lib.q.defer();
+    defer.notify ({'op': 'start'});
+    cursor.each (this._sendAggDoc.bind(this, defer));
+    return defer.promise;
+  };
+
+  MongoStorage.prototype._sendAggDoc = function (defer, err, doc) {
+    if (err) {
+      defer.reject (err);
+      return;
+    }
+
+    if (null === doc) {
+      defer.resolve('done');
+      return;
+    }
+    defer.notify ({
+      'op' : 'next',
+      'data' : doc
+    });
+  };
+
   MongoStorage.prototype.doUpdate = function (filter, updateobj, options, defer) {
     var collection = this.db.collection(this.collectionname),
       descriptor,
