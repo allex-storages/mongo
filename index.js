@@ -2,6 +2,11 @@ var mongodb = require('mongodb'),
   MongoClient = mongodb.MongoClient,
   ObjectID = mongodb.ObjectID;
 
+function main(execlib) {
+  'use strict';
+  return execlib.loadDependencies('client', ['allex:data'], createMongoStorage.bind(null, execlib));
+}
+
 function createMongoStorage(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -394,4 +399,4 @@ function createMongoStorage(execlib){
   return MongoStorage;
 }
 
-module.exports = createMongoStorage;
+module.exports = main;
