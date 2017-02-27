@@ -238,9 +238,9 @@ function createMongoStorage(execlib){
     //remapFilter(this._idname, descriptor);
     changed = this.maybeChangeDescriptorField(descriptor);
     mfiltertemp = mongoSuite.filterFactory.createFromDescriptor(descriptor, this);//.map(this.allex2db.bind(this));
-    console.log('doDelete filter.__descriptor', filter.__descriptor);
-    console.log('resulting filter array', mongoSuite.filterFactory.createFromDescriptor(filter.__descriptor, this));
-    console.log('delete filter', filter, 'desc', descriptor, '=>', mfiltertemp);
+    //console.log('doDelete filter.__descriptor', filter.__descriptor);
+    //console.log('resulting filter array', mongoSuite.filterFactory.createFromDescriptor(filter.__descriptor, this));
+    //console.log('delete filter', filter, 'desc', descriptor, '=>', mfiltertemp);
     /*
     */
     if (!lib.isArray(mfiltertemp)) {
@@ -369,7 +369,7 @@ function createMongoStorage(execlib){
     }
     updateparams.push(updateOptions(options));
     updateparams.push(this.onUpdated.bind(this, defer, filter, updateparams, changed));
-    console.log(this.collectionname, 'update', updateparams);
+    //console.log(this.collectionname, 'update', updateparams);
     collection.update.apply(collection, updateparams);
   };
   MongoStorage.prototype.onUpdated = function (defer, filter, updateparams, changed, err, updateobj) {
