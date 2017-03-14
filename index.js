@@ -302,6 +302,9 @@ function createMongoStorage(execlib){
 
   MongoStorage.prototype.doAggregate = function (aggregation_descriptor) {
     ///TODO: nije to dovoljno ... ima tu jos par stvari ... pogledaj : http://mongodb.github.io/node-mongodb-native/2.2/api/AggregationCursor.html
+    if (!this.db) {
+      return q.reject (new lib.Error('NOT_CONNECTED'));
+    }
     var collection = this.db.collection(this.collectionname);
 
     if (!collection) return q.reject (new lib.Error ('MONGODB_COLLECTION_DOES_NOT_EXIST', 'MongoDB database '+this.dbname+' does not have a collection named '+this.collectionname));
