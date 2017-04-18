@@ -310,25 +310,24 @@ function createMongoStorage(execlib){
     if (!collection) return q.reject (new lib.Error ('MONGODB_COLLECTION_DOES_NOT_EXIST', 'MongoDB database '+this.dbname+' does not have a collection named '+this.collectionname));
     var cursor = collection.aggregate(aggregation_descriptor, {cursor : {batchSize : 1}});
     var defer = lib.q.defer();
-    defer.notify ({'op': 'start'});
-    cursor.each (this._sendAggDoc.bind(this, defer));
+    var uid = lib.uid();
+    defer.notify (['rb', uid]);
+    cursor.each (this._sendAggDoc.bind(this, defer, uid));
     return defer.promise;
   };
 
-  MongoStorage.prototype._sendAggDoc = function (defer, err, doc) {
+  MongoStorage.prototype._sendAggDoc = function (defer, uid, err, doc) {
     if (err) {
       defer.reject (err);
       return;
     }
 
     if (null === doc) {
+      defer.notify(['re', uid]);
       defer.resolve('done');
       return;
     }
-    defer.notify ({
-      'op' : 'next',
-      'data' : doc
-    });
+    defer.notify (['r1', uid, doc]);
   };
 
   MongoStorage.prototype.doUpdate = function (filter, updateobj, options, defer) {
