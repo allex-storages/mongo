@@ -4,7 +4,7 @@ var mongodb = require('mongodb'),
 
 function main(execlib) {
   'use strict';
-  return execlib.loadDependencies('client', ['allex:data'], createMongoStorage.bind(null, execlib));
+  return execlib.loadDependencies('client', ['allex_dataservice'], createMongoStorage.bind(null, execlib));
 }
 
 function createMongoStorage(execlib){
