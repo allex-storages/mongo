@@ -18,7 +18,7 @@ function createFilterFactory(execlib, ObjectID) {
     }
     var fn = this.get(op);
     if(!fn){
-      console.log('No Filter factory for operator "'+op+'"');
+      throw new lib.Error('FILTER_NOT_IMPLEMENTED', 'No Filter factory for operator "'+op+'"');
       return null;
     }
     return fn(filterdescriptor, options);
@@ -34,6 +34,8 @@ function createFilterFactory(execlib, ObjectID) {
   factory.add('contains', require('./containscreator')(execlib));
   factory.add('startswith', require('./startswithcreator')(execlib));
   factory.add('endswith', require('./endswithcreator')(execlib));
+  factory.add('exists', require('./existscreator')(execlib));
+  factory.add('notexists', require('./notexistscreator')(execlib));
   factory.add('or', require('./orcreator')(execlib, factory));
   factory.add('and', require('./andcreator')(execlib, factory));
 
