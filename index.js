@@ -31,7 +31,7 @@ function createMongoStorage(execlib){
     this.db = null;
     this.dbname = storagedescriptor.database;
     this.collectionname = storagedescriptor.table;
-    this._idname = storagedescriptor._idname;
+    this._idname = storagedescriptor._idname || (lib.isString(storagedescriptor.primaryKey) ? storagedescriptor.primaryKey : null);
     this._nativeid = storagedescriptor._nativeid;
     this.q = new lib.Fifo();
     MongoClient.connect(this.connectionStringOutOf(storagedescriptor), this.onConnected.bind(this));
@@ -362,6 +362,9 @@ function createMongoStorage(execlib){
         break;
       case 'set':
         updateparams.push({ $set: updateobj });
+        break;
+      case 'inc':
+        updateparams.push({ $inc: updateobj });
         break;
       default:
         //console.log('updateobj will become', updateobj, '=>', this.__record.filterOut(updateobj));
