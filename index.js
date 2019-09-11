@@ -330,6 +330,19 @@ function createMongoStorage(execlib){
     defer.notify (['r1', uid, doc]);
   };
 
+  function eacheradder (obj, val, name) {
+    if (!lib.isArray(val)) {
+      return;
+    }
+    obj[name] = {$each: val};
+  }
+  function eacher (updateobj) {
+    var ret = {}, _r = ret;
+    lib.traverseShallow(updateobj, eacheradder.bind(null, _r));
+    _r = null;
+    return ret;
+  }
+
   MongoStorage.prototype.doUpdate = function (filter, updateobj, options, defer) {
     var collection = this.db.collection(this.collectionname),
       descriptor,
@@ -351,8 +364,14 @@ function createMongoStorage(execlib){
       case 'push':
         updateparams.push({ $push: updateobj });
         break;
+      case 'pusharray':
+        updateparams.push({ $push: eacher(updateobj) });
+        break;
       case 'addtoset':
         updateparams.push({ $addToSet: updateobj });
+        break;
+      case 'addtosetarray':
+        updateparams.push({ $addToSet: eacher(updateobj) });
         break;
       case 'removeallfromset':
         updateparams.push({ $pullAll: updateobj });
