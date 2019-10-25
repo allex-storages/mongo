@@ -15,7 +15,9 @@ function createMongoStorage(execlib){
     StorageBase = dataSuite.StorageBase,
     mongoSuite = {
       filterFactory: require('./filters/factorycreator')(execlib, ObjectID)
-    };
+    },
+    AllexMongoBridge = require('./bridge')(execlib, ObjectID),
+    ensureIndices = require('./indices')(execlib);
 
   function MongoStorage(storagedescriptor){
     if (!storagedescriptor){
@@ -28,17 +30,22 @@ function createMongoStorage(execlib){
       throw new lib.Error('NO_TABLE_IN_STORAGEDESCRIPTOR', 'MongoStorage needs a storagedescriptor.table name in constructor');
     }
     StorageBase.call(this,storagedescriptor);
+    this.client = null;
     this.db = null;
     this.dbname = storagedescriptor.database;
     this.collectionname = storagedescriptor.table;
     this._idname = storagedescriptor._idname || (lib.isString(storagedescriptor.primaryKey) ? storagedescriptor.primaryKey : null);
     this._nativeid = storagedescriptor._nativeid;
     this.q = new lib.Fifo();
-    MongoClient.connect(this.connectionStringOutOf(storagedescriptor), this.onConnected.bind(this));
+    this.bridge = new AllexMongoBridge(storagedescriptor);
+    this.connect(storagedescriptor);
   }
   lib.inherit(MongoStorage,StorageBase);
   MongoStorage.prototype.destroy = function () {
-
+    if (this.bridge) {
+      this.bridge.destroy();
+    }
+    this.bridge = null;
     if (this.q) {
       this.drainQ();
       this.q.destroy();
@@ -46,24 +53,33 @@ function createMongoStorage(execlib){
     this.q = null;
     this.collectionname = null;
     this.dbname = null;
-    if(this.db){
-      this.db.close();
+    if(this.client){
+      this.client.close();
     }
+    this.client = null;
     this.db = null;
     StorageBase.prototype.destroy.call(this);
+  };
+  MongoStorage.prototype.connect = function (storagedescriptor) {
+    var _sd = storagedescriptor;
+    MongoClient.connect(this.connectionStringOutOf(storagedescriptor), {
+      useNewUrlParser: true,
+      useUnifiedTopology: true
+    },this.onConnected.bind(this, _sd));
+    _sd = null;
   };
   MongoStorage.prototype.drainQ = function () {
     this.q.drain(this.drainer.bind(this));
   };
   MongoStorage.prototype.drainer = function (qe) {
-    qe[qe.length-1].reject('MongoStorage draining');
+    qe[qe.length-1].reject(new lib.Error('MONGO_STORAGE_DRAINING', 'MongoStorage draining'));
   };
   MongoStorage.prototype.satisfyQ = function () {
     if (this.q) {
-      this.q.drain(this.satifyDrainer.bind(this));
+      this.q.drain(this.satisfyDrainer.bind(this));
     }
   };
-  MongoStorage.prototype.satifyDrainer = function (qe) {
+  MongoStorage.prototype.satisfyDrainer = function (qe) {
     var methodname = qe.shift(),
       method = this[methodname];
     if(lib.isFunction(method)){
@@ -77,70 +93,54 @@ function createMongoStorage(execlib){
     } else {
       cs += server
     }
+    /*
     if (storagedescriptor.database) {
       cs += ('/'+storagedescriptor.database);
     }
+    */
     //console.log('Connection string,',storagedescriptor,'=>',cs);
     return cs;
   };
-  MongoStorage.prototype.onConnected = function (err, db) {
+  MongoStorage.prototype.onConnected = function (storagedescriptor, err, client) {
+    var _cl;
     if (err) {
       console.log('ERROR IN CONNECTING TO MONGO DB:', err);
     } else {
-      this.db = db;
-      this.satisfyQ();
+      _cl = client;
+      ensureIndices(storagedescriptor, client.db(this.dbname).collection(this.collectionname)).then(
+        this.finalizeConnect.bind(this, _cl),
+        this.destroy.bind(this)
+      );
+      _cl = null;
     }
   };
-  function _id2nameRemapper(_idname, ret, item, itemname) {
-    if(itemname === '_id') {
-      if (item) {
-        ret[_idname] = item.toString();
-      }
-    } else if (itemname === _idname) {
-      return;
-    } else {
-      ret[itemname] = item;
-    }
-  }
-  MongoStorage.prototype.remap_db2allex = function (hash) {
-    var ret = {};
-    lib.traverseShallow(hash, _id2nameRemapper.bind(null, this._idname, ret));
-    //console.log('after remap_db2allex', hash, '=>', ret);
-    return ret;
+  MongoStorage.prototype.finalizeConnect = function (client) {
+    this.client = client;
+    this.db = client.db(this.dbname);
+    this.satisfyQ();
   };
   MongoStorage.prototype.db2allex = function (item) {
-    if(this._idname){
-      return this.remap_db2allex(item);
-    } else {
-      return item;
+    if (!this.bridge) {
+      return null;
     }
-  };
-  function name2_idRemapper(skipid, _nativeid, _idname, ret, item, itemname) {
-    if(itemname === '_id'){
-      return;
-    } else if ( (itemname === _idname) && !skipid) {
-      ret['_id'] = _nativeid ? new ObjectID(item) : item;
-    } else {
-      ret[itemname] = item;
-    }
-  }
-  MongoStorage.prototype.remap_allex2db = function (hash, skipid) {
-    var ret = {};
-    lib.traverseShallow(hash, name2_idRemapper.bind(null, skipid, this._nativeid, this._idname, ret));
-    //console.log('after remap_db2allex', hash, '=>', ret);
-    return ret;
+    return this.bridge.mongo2allex(item);
   };
   MongoStorage.prototype.allex2db = function (item, skipid) {
-    if(this._idname || this._nativeid){
-      return this.remap_allex2db(item, skipid);
-    } else {
-      return item;
+    if (!this.bridge) {
+      return null;
     }
-  }
+    return this.bridge.allex2mongo(item, skipid);
+  };
+  MongoStorage.prototype.dberr2allexerr = function (err) {
+    if (!this.bridge) {
+      return err;
+    }
+    return this.bridge.mongoerror2allexerror(err);
+  };
   MongoStorage.prototype.reportItem = function (cursor, defer, totalcount, err, item) {
     if (err) {
       //console.log('rejecting with', err);
-      defer.reject(err);
+      defer.reject(this.dberr2allexerr(err));
     } else {
       if (item) {
         //console.log('notifying with', this.db2allex(item), 'because', item);
@@ -155,11 +155,13 @@ function createMongoStorage(execlib){
     defer = null;
   }
   MongoStorage.prototype.consumeCursor = function (cursor, defer) {
-    cursor.count(this.consumeCursorWCount.bind(this, cursor, defer));
+    var _c = cursor;
+    cursor.count(this.consumeCursorWCount.bind(this, _c, defer));
+    _c = null;
   }
   MongoStorage.prototype.consumeCursorWCount = function (cursor, defer, err, count) {
     if (err) {
-      defer.reject(err);
+      defer.reject(this.dberr2allexerr(err));
       defer = null;
       return;
     }
@@ -177,11 +179,14 @@ function createMongoStorage(execlib){
     var collection,
       findparams,
       findcursor,
-      descriptor;
+      descriptor,
+      limit,
+      offset;
     if (!this.db) {
       this.q.push(['doRead',query,defer]);
       return;
     }
+    //console.log('doRead', query);
     collection = this.db.collection(this.collectionname);
     if (!collection) {
       defer.reject(new lib.Error('MONGODB_COLLECTION_DOES_NOT_EXIST','MongoDB database '+this.dbname+' does not have a collection named '+this.collectionname));
@@ -191,14 +196,23 @@ function createMongoStorage(execlib){
     remapFilter(this._idname, descriptor);
     //console.log('descriptor',descriptor);
     findparams = mongoSuite.filterFactory.createFromDescriptor(descriptor, this);
-    //console.log(this.collectionname,'mongo doRead',descriptor,'=>',require('util').inspect(findparams, {depth:null}));
+    //console.log(this.collectionname,'mongo doRead',descriptor,'=>',require('util').inspect(findparams, {depth:null, colors:true}));
     findcursor =  collection.find.apply(collection,findparams);
+    offset = query.offset();
+    if(lib.isNumber(offset) && offset>0) {
+      findcursor = findcursor.skip(offset);
+    }
+    limit = query.limit();
+    if (lib.isNumber(limit)) {
+      findcursor = findcursor.limit(limit);
+    }
+    //console.log('limit', limit, 'offset', offset);
     try{
       this.consumeCursor(findcursor, defer);
     } catch (e) {
       console.error(e.stack);
       console.error(e);
-      defer.reject(e);
+      defer.reject(this.dberr2allexerr(e));
     }
   };
   MongoStorage.prototype.doCreate = function (datahash, defer){
@@ -214,11 +228,11 @@ function createMongoStorage(execlib){
       return;
     }
     //console.log('doCreate produces',datahash,'=>',this.allex2db(datahash));
-    collection.insert(this.allex2db(datahash),{},this.onCreated.bind(this, defer));
+    collection.insertOne(this.allex2db(datahash),{},this.onCreated.bind(this, defer));
   };
   MongoStorage.prototype.onCreated = function (defer, err, data){
     if (err) {
-      defer.reject(err);
+      defer.reject(this.dberr2allexerr(err));
     } else {
       if (data.insertedCount===1) {
         defer.resolve(this.db2allex(data.ops[0]));
@@ -249,11 +263,11 @@ function createMongoStorage(execlib){
     }
     mfilter = mfiltertemp[0];
     //console.log(filter,'=>',mfiltertemp,'=>',mfilter);
-    collection.remove(mfilter,{fsync:true},this.onDeleted.bind(this, changed, descriptor, defer));
+    collection.removeMany(mfilter,{fsync:true},this.onDeleted.bind(this, changed, descriptor, defer));
   };
   MongoStorage.prototype.onDeleted = function (changed, descriptor, defer, err, data) {
     if (err) {
-      defer.reject(err);
+      defer.reject(this.dberr2allexerr(err));
     } else {
       if (changed) {
         this.maybeRevertDescriptorField(descriptor);
@@ -318,7 +332,7 @@ function createMongoStorage(execlib){
 
   MongoStorage.prototype._sendAggDoc = function (defer, uid, err, doc) {
     if (err) {
-      defer.reject (err);
+      defer.reject (this.dberr2allexerr(err));
       return;
     }
 
@@ -386,15 +400,15 @@ function createMongoStorage(execlib){
         updateparams.push({ $inc: updateobj });
         break;
       default:
-        //console.log('updateobj will become', updateobj, '=>', this.__record.filterOut(updateobj));
+        console.log('updateobj will become', updateobj, '=>', this.__record.filterOut(updateobj));
         defupdobj = this.allex2db(this.__record.filterOut(updateobj), true);
         updateparams.push(defupdobj);
         break;
     }
     updateparams.push(updateOptions(options));
     updateparams.push(this.onUpdated.bind(this, defer, filter, updateparams, changed));
-    //console.log(this.collectionname, 'update', updateparams);
-    collection.update.apply(collection, updateparams);
+    //console.log(this.collectionname, 'update', require('util').inspect(updateparams, {depth:8, colors:true}));
+    collection.updateMany.apply(collection, updateparams);
   };
   MongoStorage.prototype.onUpdated = function (defer, filter, updateparams, changed, err, updateobj) {
     //console.log('onUpdated', err, updateobj);

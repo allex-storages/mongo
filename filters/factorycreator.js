@@ -31,6 +31,7 @@ function createFilterFactory(execlib, ObjectID) {
   factory.add('lte', require('./ltecreator')(execlib, fieldValue));
   factory.add('lt', require('./ltcreator')(execlib, fieldValue));
   factory.add('in', require('./increator')(execlib));
+  factory.add('nin', require('./nincreator')(execlib));
   factory.add('contains', require('./containscreator')(execlib));
   factory.add('startswith', require('./startswithcreator')(execlib));
   factory.add('endswith', require('./endswithcreator')(execlib));
@@ -38,6 +39,7 @@ function createFilterFactory(execlib, ObjectID) {
   factory.add('notexists', require('./notexistscreator')(execlib));
   factory.add('or', require('./orcreator')(execlib, factory));
   factory.add('and', require('./andcreator')(execlib, factory));
+  factory.add('near', require('./nearcreator')(execlib, factory));
 
   return factory;
 }
