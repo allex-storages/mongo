@@ -1,6 +1,6 @@
 {
   "name": "allex_mongostorage",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "MongoDB Storage engine for AllexJS DataServices",
   "main": "index.js",
   "scripts": {
@@ -19,6 +19,6 @@
   "author": "HERS Belgrade",
   "license": "ISC",
   "dependencies": {
-    "mongodb": "2.2.x"
+    "mongodb": "3.x"
   }
 }
