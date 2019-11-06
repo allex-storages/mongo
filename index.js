@@ -42,6 +42,9 @@ function createMongoStorage(execlib){
   }
   lib.inherit(MongoStorage,StorageBase);
   MongoStorage.prototype.destroy = function () {
+    console.trace();
+    console.error(arguments);
+    console.error(this.constructor.name, 'dying');
     if (this.bridge) {
       this.bridge.destroy();
     }
@@ -51,6 +54,8 @@ function createMongoStorage(execlib){
       this.q.destroy();
     }
     this.q = null;
+    this._nativeid = null;
+    this._idname = null;
     this.collectionname = null;
     this.dbname = null;
     if(this.client){
@@ -119,6 +124,16 @@ function createMongoStorage(execlib){
     this.db = client.db(this.dbname);
     this.satisfyQ();
   };
+  MongoStorage.prototype.handleQ = function (commandarry) {
+    if (this.q) {
+      this.q.push(commandarry)
+    } else {
+      console.error('How come handleQ is called with');
+      console.error(commandarry);
+      console.error('when', this.constructor.name, 'is dead?');
+      console.error(this);
+    }
+  };
   MongoStorage.prototype.db2allex = function (item) {
     if (!this.bridge) {
       return null;
@@ -183,7 +198,7 @@ function createMongoStorage(execlib){
       limit,
       offset;
     if (!this.db) {
-      this.q.push(['doRead',query,defer]);
+      this.handleQ(['doRead',query,defer]);
       return;
     }
     //console.log('doRead', query);
@@ -218,7 +233,7 @@ function createMongoStorage(execlib){
   MongoStorage.prototype.doCreate = function (datahash, defer){
     var collection;
     if (!this.db) {
-      this.q.push(['doCreate', datahash, defer]);
+      this.handleQ(['doCreate', datahash, defer]);
       return;
     }
     datahash = this.__record.filterHash(datahash);
@@ -244,7 +259,7 @@ function createMongoStorage(execlib){
   MongoStorage.prototype.doDelete = function (filter, defer) {
     var collection, descriptor, mfiltertemp, mfilter, changed;
     if (!this.db) {
-      this.q.push(['doDelete', filter, defer]);
+      this.handleQ(['doDelete', filter, defer]);
       return;
     }
     collection = this.db.collection(this.collectionname);

@@ -97,6 +97,10 @@ function createIndexEnsurer (execlib) {
       this.reject(new lib.Error('NOT_A_COLLECTION', 'The collection provided is not a MongoDB collection at all'));
       return;
     }
+    if (!(lib.isArray(this.needed) && this.needed.length>0)) {
+      this.resolve(true);
+      return;
+    }
     this.collection.createIndexes(this.needed, this.onCreateIndexes.bind(this));
   };
   IndicesEnsurerJob.prototype.onCreateIndexes = function (err, res) {
