@@ -8,31 +8,24 @@ function createIndexEnsurer (execlib) {
     geolocation: '2dsphere'
   };
 
+  function fieldIsNameAndAsc (field) {
+    return lib.isVal(field) && field.name && field.asc;
+  }
   function toAscIndex (result, field) {
+    var fn, asc;
     if (!result.key) {
       result.key = {};
     }
-    result.key[field] = 1;
-    return result;
-  }
-  function indexSpecInterpreter (result, spec) {
-    //console.log('indexSpecInterpreter', result, spec);
-    var indexobj = {};
-    if (!lib.isVal(spec)) {
+    if (fieldIsNameAndAsc(field)) {
+      fn = field.name;
+      asc = field.asc ? 1 : -1;
+    } else if (lib.isString(field)) {
+      fn = field;
+      asc = 1;
+    } else {
       return result;
     }
-    if (lib.isArray(spec.fields)) {
-      spec.fields.reduce(toAscIndex, indexobj);
-    }
-    if (lib.isArray(spec.desc)) {
-      spec.desc.reduce(toAscIndex, indexobj);
-    }
-    if (spec.unique) {
-      indexobj.unique = true;
-    }
-    if (indexobj.key) {
-      result.push(indexobj);
-    }
+    result.key[fn] = asc;
     return result;
   }
 
@@ -66,10 +59,10 @@ function createIndexEnsurer (execlib) {
     if (!lib.isArray(specs)) {
       return [];
     }
-    return specs.reduce(indexSpecInterpreter, []);
+    return specs.reduce(this.indexSpecInterpreter.bind(this), []);
   };
   IndicesEnsurerJob.prototype.checkForAuto = function () {
-    if (!(lib.isVal(this.storagedescriptor) && lib.isVal(this.storagedescriptor.record) && lib.isArray(this.storagedescriptor.record.fields))) {
+    if (!this.hasFieldsArrayInDescriptor()) {
       return;
     }
     this.storagedescriptor.record.fields.forEach(this.autoCheckerOnField.bind(this));
@@ -88,7 +81,7 @@ function createIndexEnsurer (execlib) {
     this.needed.push({key:indexobj});
   };
   IndicesEnsurerJob.prototype.ensure = function () {
-    //console.log('have to ensure indices:', this.needed);
+    //console.log('have to ensure indices:', require('util').inspect(this.needed, {depth:8, colors:true}));
     if (!this.collection) {
       this.reject(new lib.Error('NO_COLLECTION', 'There is no MongoDB collection to createIndexes on'));
       return;
@@ -116,6 +109,60 @@ function createIndexEnsurer (execlib) {
       }
     }
     this.resolve(true);
+  };
+  IndicesEnsurerJob.prototype.allowNullsInPartial = function (result, field) {
+    var fn, ft;
+    if (fieldIsNameAndAsc(field)) {
+      fn = field.name;
+    } else if (lib.isString(field)) {
+      fn = field;
+    }
+    ft = this.typeOfField(fn);
+    if (ft) {
+      result[fn] = {$type: ft};
+    }
+    return result;
+  };
+  IndicesEnsurerJob.prototype.indexSpecInterpreter = function (result, spec) {
+    //console.log('indexSpecInterpreter', result, spec);
+    var indexobj = {};
+    if (!lib.isVal(spec)) {
+      return result;
+    }
+    if (lib.isArray(spec.fields)) {
+      spec.fields.reduce(toAscIndex, indexobj);
+    }
+    if (lib.isArray(spec.desc)) {
+      spec.desc.reduce(toAscIndex, indexobj);
+    }
+    if (spec.unique) {
+      indexobj.unique = true;
+    }
+    if (spec.allownulls) {
+      indexobj.partialFilterExpression = spec.fields.reduce(this.allowNullsInPartial.bind(this), {});
+    }
+    if (indexobj.key) {
+      result.push(indexobj);
+    }
+    return result;
+  };
+  IndicesEnsurerJob.prototype.typeOfField = function (fname) {
+    var i, fs, fl, f;
+    if (!this.hasFieldsArrayInDescriptor()) {
+      return null;
+    }
+    fs = this.storagedescriptor.record.fields;
+    fl = fs.length;
+    for (i=0; i<fl; i++) {
+      f = fs[i];
+      if (f.name===fname) {
+        return f.type;
+      }
+    }
+    return null;
+  };
+  IndicesEnsurerJob.prototype.hasFieldsArrayInDescriptor = function () {
+    return lib.isVal(this.storagedescriptor) && lib.isVal(this.storagedescriptor.record) && lib.isArray(this.storagedescriptor.record.fields);
   };
 
 

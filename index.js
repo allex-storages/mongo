@@ -190,6 +190,10 @@ function createMongoStorage(execlib){
       filter.filters.forEach(remapFilter.bind(null, _idname));
     }
   }
+  function visiblefielder (result, field) {
+    result[field.name] = 1;
+    return result;
+  }
   MongoStorage.prototype.doRead = function (query, defer) {
     var collection,
       findparams,
@@ -211,6 +215,9 @@ function createMongoStorage(execlib){
     remapFilter(this._idname, descriptor);
     //console.log('descriptor',descriptor);
     findparams = mongoSuite.filterFactory.createFromDescriptor(descriptor, this);
+    if (query.record && lib.isArray(query.record.fields)) {
+      findparams.push({projection: query.record.fields.reduce(visiblefielder, {})});
+    }
     //console.log(this.collectionname,'mongo doRead',descriptor,'=>',require('util').inspect(findparams, {depth:null, colors:true}));
     findcursor =  collection.find.apply(collection,findparams);
     offset = query.offset();
