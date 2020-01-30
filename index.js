@@ -295,7 +295,7 @@ function createMongoStorage(execlib){
         this.maybeRevertDescriptorField(descriptor);
       }
       //console.log('onDeleted resolving', data.result, 'with final descriptor', descriptor);
-      defer.resolve(data);
+      defer.resolve(this.bridge.mongodelete2allex(data));
     }
     defer = null;
   };

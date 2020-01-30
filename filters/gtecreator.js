@@ -2,7 +2,7 @@ function createGTEFilter(execlib, fieldValue) {
   'use strict';
   return function (filter) {
     var findhash = {},
-      filterobj = {"$gte" : fieldValue(filter.value, filter.field, {})||''},
+      filterobj = {"$gte" : fieldValue(filter.value, filter.field, {})||0},
       options = '';
     if (options) {
       filterobj.$options = options;

@@ -26,6 +26,7 @@ function createFilterFactory(execlib, ObjectID) {
 
   var factory = new Factory();
   factory.add('eq', require('./eqcreator')(execlib, fieldValue));
+  factory.add('ne', require('./necreator')(execlib, fieldValue));
   factory.add('gte', require('./gtecreator')(execlib, fieldValue));
   factory.add('gt', require('./gtcreator')(execlib, fieldValue));
   factory.add('lte', require('./ltecreator')(execlib, fieldValue));

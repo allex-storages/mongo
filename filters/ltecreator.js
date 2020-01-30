@@ -2,7 +2,7 @@ function createLTEFilter(execlib, fieldValue) {
   'use strict';
   return function (filter) {
     var findhash = {},
-      filterobj = {"$lte" : fieldValue(filter.value, filter.field, {})||''},
+      filterobj = {"$lte" : fieldValue(filter.value, filter.field, {})||0},
       options = '';
     if (options) {
       filterobj.$options = options;

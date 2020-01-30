@@ -113,6 +113,15 @@ function createAllexMongoBrigde (execlib, ObjectID) {
     }
     return t.mongo2allex(item);
   };
+  AllexMongoBridge.prototype.mongodelete2allex = function (delres) {
+    if (!delres) {
+      return null;
+    }
+    if (lib.isVal(delres.deletedCount)) {
+      return delres.deletedCount;
+    }
+    return delres;
+  };
   AllexMongoBridge.prototype.mongoerror2allexerror = function (err) {
     if (err && err.code === 11000 && err.name === 'MongoError') {
       return new lib.Error('DUPLICATE_KEY', err.errmsg);
