@@ -18,19 +18,18 @@ function createGeolocationTranslator (lib) {
         coordinates: [thingy.longitude, thingy.latitude]
       }
     }
+    return null;
   };
   GeoLocationTranslator.prototype.mongo2allex = function (thingy) {
-    if (
+    return (
       lib.isVal(thingy) &&
       thingy.type === 'Point' &&
       lib.isArray(thingy.coordinates) &&
       thingy.coordinates.length === 2
-    ) {
-      return {
-        longitude: thingy.coordinates[0],
-        latitude: thingy.coordinates[1]
-      };
-    }
+    ) ? {
+      longitude: thingy.coordinates[0],
+      latitude: thingy.coordinates[1]
+    } : null;
   };
 
   return GeoLocationTranslator;
