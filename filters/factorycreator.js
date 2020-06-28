@@ -41,6 +41,8 @@ function createFilterFactory(execlib, ObjectID) {
   factory.add('or', require('./orcreator')(execlib, factory));
   factory.add('and', require('./andcreator')(execlib, factory));
   factory.add('near', require('./nearcreator')(execlib, factory));
+  factory.add('bitmaskany', require('./bitmaskanycreator')(execlib, fieldValue));
+  factory.add('bitmaskall', require('./bitmaskallcreator')(execlib, fieldValue));
 
   return factory;
 }
