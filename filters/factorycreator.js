@@ -36,6 +36,7 @@ function createFilterFactory(execlib, ObjectID) {
   factory.add('contains', require('./containscreator')(execlib));
   factory.add('startswith', require('./startswithcreator')(execlib));
   factory.add('endswith', require('./endswithcreator')(execlib));
+  factory.add('regex', require('./regexcreator')(execlib));
   factory.add('exists', require('./existscreator')(execlib));
   factory.add('notexists', require('./notexistscreator')(execlib));
   factory.add('or', require('./orcreator')(execlib, factory));
